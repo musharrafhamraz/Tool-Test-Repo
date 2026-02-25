@@ -1,0 +1,41 @@
+name: Afterburner CI/CD
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  afterburner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install bandit semgrep
+
+      - name: Security Scan — Bandit
+        run: bandit -r . -f json -o bandit-report.json || true
+
+      - name: Security Scan — Semgrep
+        run: semgrep scan --json --quiet . > semgrep-report.json || true
+
+      - name: Run Tests
+        run: python -m pytest --tb=short -q || true
+
+      - name: Upload Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: afterburner-reports
+          path: |
+            bandit-report.json
+            semgrep-report.json
